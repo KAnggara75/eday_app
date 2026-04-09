@@ -20,6 +20,7 @@ class _CameraScreenState extends State<CameraScreen> {
   late CameraController _controller;
   bool _isInit = false;
   bool _isProcessing = false;
+  bool _showGuideline = true;
   String? _previewImagePath;
 
   @override
@@ -83,6 +84,11 @@ class _CameraScreenState extends State<CameraScreen> {
     if (isLandscape && ratio < 1) return 1 / ratio;
     if (!isLandscape && ratio > 1) return 1 / ratio;
     return ratio;
+  }
+
+  String get _guidelineUrl {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    return "https://raw.githubusercontent.com/KAnggara75/everyday/main/timelapse/last.jpg?v=$timestamp";
   }
 
   Future<void> _takePicture() async {
@@ -239,6 +245,24 @@ class _CameraScreenState extends State<CameraScreen> {
                   ),
                 ),
 
+                // Guideline Overlay
+                if (_showGuideline)
+                  Center(
+                    child: AspectRatio(
+                      aspectRatio: 3 / 2,
+                      child: Opacity(
+                        opacity: 0.4,
+                        child: Image.network(
+                          _guidelineUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const SizedBox();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+
                 if (_previewImagePath != null)
                   Center(
                     child: AspectRatio(
@@ -266,8 +290,22 @@ class _CameraScreenState extends State<CameraScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Spacer top
-                const SizedBox(height: 48),
+                // Spacer top & Guideline toggle
+                Padding(
+                  padding: const EdgeInsets.only(top: 24.0),
+                  child: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _showGuideline = !_showGuideline;
+                      });
+                    },
+                    icon: Icon(
+                      _showGuideline ? Icons.visibility : Icons.visibility_off,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ),
 
                 // Tombol Capture
                 FloatingActionButton(
