@@ -251,7 +251,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     child: AspectRatio(
                       aspectRatio: 3 / 2,
                       child: Opacity(
-                        opacity: 0.4,
+                        opacity: 0.5,
                         child: Image.network(
                           _guidelineUrl,
                           fit: BoxFit.cover,

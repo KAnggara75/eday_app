@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'github_sync_service.dart';
 
 class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
@@ -12,6 +14,9 @@ class GalleryScreen extends StatefulWidget {
 class _GalleryScreenState extends State<GalleryScreen> {
   List<File> _images = [];
   bool _isLoading = true;
+  bool _isSyncing = false;
+  int _syncTotal = 0;
+  int _syncCurrent = 0;
 
   @override
   void initState() {
@@ -48,9 +53,62 @@ class _GalleryScreenState extends State<GalleryScreen> {
     }
   }
 
+  Future<void> _syncToGithub() async {
+    if (_images.isEmpty) return;
+    String? token = dotenv.env['GITHUB_PAT'];
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('GITHUB_PAT not found in .env')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSyncing = true;
+      _syncTotal = _images.length;
+      _syncCurrent = 0;
+    });
+
+    final syncService = GithubSyncService(token: token);
+    await syncService.syncFiles(_images, (current, total) {
+      if (mounted) {
+        setState(() {
+          _syncCurrent = current;
+          _syncTotal = total;
+        });
+      }
+    });
+
+    if (mounted) {
+      setState(() {
+        _isSyncing = false;
+      });
+      _loadImages(); // Refresh local list as files are deleted
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sync completed!')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Galeri'),
+        actions: [
+          if (_isSyncing)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text('$_syncCurrent/$_syncTotal'),
+              ),
+            ),
+          IconButton(
+            icon: const Icon(Icons.cloud_upload),
+            onPressed: _isSyncing ? null : _syncToGithub,
+          ),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _images.isEmpty
