@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:convert';
 import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
 import 'gallery_screen.dart';
@@ -22,11 +25,48 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _isProcessing = false;
   bool _showGuideline = true;
   String? _previewImagePath;
+  Uint8List? _guidelineBytes;
+  bool _isLoadingGuideline = false;
 
   @override
   void initState() {
     super.initState();
     _initCamera();
+    _fetchGuidelineImage();
+  }
+
+  Future<void> _fetchGuidelineImage() async {
+    String? token = dotenv.env['GITHUB_PAT'];
+    if (token == null || token.isEmpty) return;
+
+    setState(() => _isLoadingGuideline = true);
+
+    try {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final url = Uri.parse(
+        'https://api.github.com/repos/KAnggara75/everyday/contents/timelapse/last.jpg?v=$timestamp',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'token $token',
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final base64Content = data['content'].toString().replaceAll('\n', '');
+        setState(() {
+          _guidelineBytes = base64Decode(base64Content);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching guideline: $e');
+    } finally {
+      setState(() => _isLoadingGuideline = false);
+    }
   }
 
   Future<void> _initCamera() async {
@@ -84,11 +124,6 @@ class _CameraScreenState extends State<CameraScreen> {
     if (isLandscape && ratio < 1) return 1 / ratio;
     if (!isLandscape && ratio > 1) return 1 / ratio;
     return ratio;
-  }
-
-  String get _guidelineUrl {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return "https://raw.githubusercontent.com/KAnggara75/everyday/main/timelapse/last.jpg?v=$timestamp";
   }
 
   Future<void> _takePicture() async {
@@ -246,20 +281,26 @@ class _CameraScreenState extends State<CameraScreen> {
                 ),
 
                 // Guideline Overlay
-                if (_showGuideline)
+                if (_showGuideline && _guidelineBytes != null)
                   Center(
                     child: AspectRatio(
                       aspectRatio: 3 / 2,
                       child: Opacity(
                         opacity: 0.5,
-                        child: Image.network(
-                          _guidelineUrl,
+                        child: Image.memory(
+                          _guidelineBytes!,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const SizedBox();
-                          },
                         ),
                       ),
+                    ),
+                  ),
+
+                if (_isLoadingGuideline && _showGuideline)
+                  const Center(
+                    child: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   ),
 
