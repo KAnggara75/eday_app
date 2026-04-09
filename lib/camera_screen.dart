@@ -5,7 +5,6 @@ import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:convert';
 import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
 import 'gallery_screen.dart';
@@ -51,15 +50,13 @@ class _CameraScreenState extends State<CameraScreen> {
         url,
         headers: {
           'Authorization': 'token $token',
-          'Accept': 'application/vnd.github.v3+json',
+          'Accept': 'application/vnd.github.v3.raw',
         },
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final base64Content = data['content'].toString().replaceAll('\n', '');
         setState(() {
-          _guidelineBytes = base64Decode(base64Content);
+          _guidelineBytes = response.bodyBytes;
         });
       }
     } catch (e) {
