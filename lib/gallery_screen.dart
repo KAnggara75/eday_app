@@ -69,7 +69,14 @@ class _GalleryScreenState extends State<GalleryScreen> {
       _syncCurrent = 0;
     });
 
-    final syncService = GithubSyncService(token: token);
+    final owner = dotenv.env['GITHUB_OWNER'] ?? 'KAnggara75';
+    final repo = dotenv.env['GITHUB_REPO'] ?? 'everyday';
+
+    final syncService = GithubSyncService(
+      token: token,
+      owner: owner,
+      repo: repo,
+    );
     await syncService.syncFiles(_images, (current, total) {
       if (mounted) {
         setState(() {

@@ -2,14 +2,19 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 
 class GithubSyncService {
-  final String owner = 'KAnggara75';
-  final String repo = 'everyday';
+  final String owner;
+  final String repo;
   final String token;
 
-  GithubSyncService({required this.token});
+  GithubSyncService({
+    required this.token,
+    this.owner = 'KAnggara75',
+    this.repo = 'everyday',
+  });
 
   Future<void> syncFiles(
     List<File> localFiles,
@@ -23,8 +28,6 @@ class GithubSyncService {
       (a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()),
     );
 
-    Uint8List? latestBytes;
-
     for (var file in localFiles) {
       if (!file.path.endsWith('.jpg')) continue;
 
@@ -36,14 +39,12 @@ class GithubSyncService {
 
       // Read bytes before potential deletion
       final bytes = await file.readAsBytes();
-      
+
       bool success = await _uploadFileWithBytes(bytes, targetPath);
       if (success) {
-        latestBytes = bytes;
-        
         current++;
         onProgress(current, total);
-        
+
         // Delete local file after successful upload
         try {
           await file.delete();
@@ -54,11 +55,6 @@ class GithubSyncService {
 
       // Delay to avoid abuse mechanism
       await Future.delayed(const Duration(milliseconds: 500));
-    }
-
-    // Update timelapse/last.jpg
-    if (latestBytes != null) {
-      await _uploadFileWithBytes(latestBytes, 'timelapse/last.jpg', forceOverwrite: true);
     }
   }
 
@@ -91,8 +87,12 @@ class GithubSyncService {
 
     final base64Content = base64Encode(bytes);
 
+    final now = DateTime.now();
+    final timestamp =
+        '${DateFormat('E MMM d HH:mm:ss', 'en_US').format(now)} WIB ${DateFormat('yyyy', 'en_US').format(now)}';
+
     final body = {
-      'message': 'Sync: Upload $targetPath',
+      'message': 'Updated: $timestamp [APP]',
       'content': base64Content,
     };
 

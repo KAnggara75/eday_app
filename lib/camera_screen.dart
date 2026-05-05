@@ -41,9 +41,12 @@ class _CameraScreenState extends State<CameraScreen> {
     setState(() => _isLoadingGuideline = true);
 
     try {
+      final owner = dotenv.env['GITHUB_OWNER'] ?? 'KAnggara75';
+      final repo = dotenv.env['GITHUB_REPO'] ?? 'everyday';
       final timestamp = DateTime.now().millisecondsSinceEpoch;
+      const targetPath = 'timelapse/last.jpg';
       final url = Uri.parse(
-        'https://api.github.com/repos/KAnggara75/everyday/contents/timelapse/last.jpg?v=$timestamp',
+        'https://api.github.com/repos/$owner/$repo/contents/$targetPath?v=$timestamp',
       );
 
       final response = await http.get(
