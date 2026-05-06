@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:file/file.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -9,12 +9,14 @@ class GithubSyncService {
   final String owner;
   final String repo;
   final String token;
+  final http.Client _client;
 
   GithubSyncService({
     required this.token,
     this.owner = 'KAnggara75',
     this.repo = 'everyday',
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   Future<void> syncFiles(
     List<File> localFiles,
@@ -40,7 +42,7 @@ class GithubSyncService {
       // Read bytes before potential deletion
       final bytes = await file.readAsBytes();
 
-      bool success = await _uploadFileWithBytes(bytes, targetPath);
+      bool success = await uploadFileWithBytes(bytes, targetPath);
       if (success) {
         current++;
         onProgress(current, total);
@@ -58,7 +60,8 @@ class GithubSyncService {
     }
   }
 
-  Future<bool> _uploadFileWithBytes(
+  @visibleForTesting
+  Future<bool> uploadFileWithBytes(
     Uint8List bytes,
     String targetPath, {
     bool forceOverwrite = false,
@@ -69,7 +72,7 @@ class GithubSyncService {
 
     String? sha;
 
-    final checkRes = await http.get(
+    final checkRes = await _client.get(
       url,
       headers: {
         'Authorization': 'token $token',
@@ -100,7 +103,7 @@ class GithubSyncService {
       body['sha'] = sha;
     }
 
-    final putRes = await http.put(
+    final putRes = await _client.put(
       url,
       headers: {
         'Authorization': 'token $token',
